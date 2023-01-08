@@ -75,3 +75,9 @@
 #### 2. 文件说明
 
 包含DMA接收中断函数（使用空闲中断）、JY901数据结构体（待优化）、JY901陀螺仪数据解算函数。
+
+#### 3. 相关帖子
+
++ [(8条消息) STM32应用(七)JY901九轴姿态模块（串口DMA空闲中断和I2C通信）_三木今天学习了嘛的博客-CSDN博客_jy901](https://blog.csdn.net/weixin_45751396/article/details/119641721)
++ [(8条消息) STM32 Cubemax(十一) ——JY901陀螺仪数据的读取与简单数据处理_lzzzzzzm的博客-CSDN博客_jy901](https://blog.csdn.net/lzzzzzzm/article/details/119573194)
++ 淘宝相关店铺

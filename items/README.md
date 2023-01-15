@@ -81,3 +81,14 @@
 + [(8条消息) STM32应用(七)JY901九轴姿态模块（串口DMA空闲中断和I2C通信）_三木今天学习了嘛的博客-CSDN博客_jy901](https://blog.csdn.net/weixin_45751396/article/details/119641721)
 + [(8条消息) STM32 Cubemax(十一) ——JY901陀螺仪数据的读取与简单数据处理_lzzzzzzm的博客-CSDN博客_jy901](https://blog.csdn.net/lzzzzzzm/article/details/119573194)
 + 淘宝相关店铺
+
+### TCS3472颜色传感器
+
+#### 1. 包含文件
+
++ tcs3472.c
++ tcs3472.h
+
+#### 2. 代码说明
+
+使用软件IIC进行通信，.c文件中包含了软件IIC配置函数。

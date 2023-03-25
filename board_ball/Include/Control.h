@@ -21,8 +21,8 @@
 #define Running 1	//正在转动
 #define Stop 0	//静止
 
-typedef int PIDOut_Type;	//PID的输出值的数据类型
-typedef int PIDIn_Type;	//PID的目标、误差的数据类型
+typedef float PIDOut_Type;	//PID的输出值的数据类型
+typedef float PIDIn_Type;	//PID的目标、误差的数据类型
 
 /* PID结构体 */
 typedef struct PIDStruct{
@@ -34,7 +34,7 @@ typedef struct PIDStruct{
 
 /* 步进电机结构体 */
 typedef struct stepmoter{
-	int No;	//电机编号
+	int No;	//电机编号，1对应y轴电机，2对应x轴电机
 	GPIO_TypeDef *Dir_Port;
 	uint16_t Dir_pin;	//方向控制信号引脚
 	uint16_t Stp_pin;	//脉冲输入引脚
@@ -62,24 +62,24 @@ typedef struct stepmoter{
 
 extern stepper motor1;
 extern stepper motor2;
-extern stepper motor3;
-extern stepper motor4;
 
 extern pid pid_controler1;
 extern pid pid_controler2;
-extern pid pid_controler3;
-extern pid pid_controler4;
+
 /********** PID底层函数 **********/
-void pid_init(pid* pid_controller,int max,int min);
+void pid_init(pid* pid_controller,float p,float i,float d,PIDOut_Type max,PIDOut_Type min);
 void pos_pid_realize(pid* PID,PIDIn_Type actual_val);
 
 /********** 电机底层函数 **********/
-void stepper_init(stepper* motor,uint16_t stp_pin,GPIO_TypeDef *port,uint16_t dir_pin,uint32_t channel,pid* PID);
+void stepper_init(stepper* motor,uint16_t stp_pin,GPIO_TypeDef *port,uint16_t dir_pin,uint32_t channel,pid* PID,int No);
 void stepper_ctr(stepper* motor,int pulse_count);
 void stepper_to_angle(stepper *motor,float target_ang,int v);
 
 /********** 平板控制函数 **********/
 void board_y_angle(float target_ang,int v);
+void board_y_dangle(float d_angle,int v);
 void board_x_angle(float target_ang,int v);
+void board_x_dangle(float d_angle,int v);
+void pid_dangle(stepper *motor,int v);
 
 #endif

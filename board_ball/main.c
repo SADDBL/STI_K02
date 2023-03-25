@@ -27,12 +27,15 @@
 /* USER CODE BEGIN Includes */
 #include "Control.h"
 #include "connect.h"
+#include "oled.h"
 #include "Hardware.h"
 
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+#define x0 300
+#define y0 300
 
 /* USER CODE END PTD */
 
@@ -66,10 +69,21 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-int OC_Channel1_Pulse,OC_Channel2_Pulse,OC_Channel3_Pulse,OC_Channel4_Pulse;//输出比较Pulse值，决定输出频率，f=1MHz/Pulse
-int OC_Channel1_Duty,OC_Channel2_Duty,OC_Channel3_Duty,OC_Channel4_Duty;//输出比较Duty值，决定占空比，即Duty%
+int OC_Channel1_Pulse,OC_Channel2_Pulse;//输出比较Pulse值，决定输出频率，f=1MHz/Pulse
+int OC_Channel1_Duty,OC_Channel2_Duty;//输出比较Duty值，决定占空比，即Duty%
 
+//矩阵键盘输入数值
 int keyborad_data;
+
+//小球目标位置(x,y)
+int x_target,y_target;
+
+//小球当前位置(x,y)
+int x_cur,y_cur;
+
+//PID控制器的参数，写成全局方便修改
+float kp1=0.1,ki1=0,kd1=0;
+float kp2=0.1,ki2=0,kd2=0;
 /* USER CODE END 0 */
 
 /**
@@ -108,20 +122,23 @@ int main(void)
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 	HAL_UART_Receive_IT(&huart2,RecieveBuffer,1);
+	HAL_UART_Receive_IT(&huart3,RecieveBuffer3,1);
 	__HAL_TIM_ENABLE_IT(&htim4, TIM_IT_UPDATE );
 	HAL_TIM_Base_Start_IT(&htim1);
 	__HAL_TIM_CLEAR_FLAG(&htim1, TIM_FLAG_UPDATE);
+	OLED_Init();
+	OLED_DisPlay_On();
+	oled_pid_para_dis(1);
 	OC_Channel1_Duty=50;
 	OC_Channel2_Duty=50;
-	OC_Channel3_Duty=50;
-	OC_Channel4_Duty=50;
-//	OC_Channel1_Pulse=100000;
-	printf("a\r\n");
-	stepper_init(&motor1,GPIO_PIN_6,GPIOA,GPIO_PIN_15,TIM_CHANNEL_1,&pid_controler1);
-	stepper_init(&motor2,GPIO_PIN_7,GPIOB,GPIO_PIN_3,TIM_CHANNEL_2,&pid_controler2);
-	stepper_init(&motor3,GPIO_PIN_8,GPIOB,GPIO_PIN_4,TIM_CHANNEL_3,&pid_controler3);
-	stepper_init(&motor4,GPIO_PIN_9,GPIOB,GPIO_PIN_5,TIM_CHANNEL_4,&pid_controler4);
-//	stepper_to_angle(&motor4,stepper_usart_angle[1],270);
+	
+	//PID控制器结构体初始化
+	pid_init(&pid_controler1,kp1,ki1,kd1,7,-7);
+	pid_init(&pid_controler2,kp2,ki2,kd2,7,-7);
+	
+	//步进电机结构体初始化
+	stepper_init(&motor1,GPIO_PIN_6,GPIOA,GPIO_PIN_15,TIM_CHANNEL_1,&pid_controler1,1);
+	stepper_init(&motor2,GPIO_PIN_7,GPIOB,GPIO_PIN_3,TIM_CHANNEL_2,&pid_controler2,2);
 
   /* USER CODE END 2 */
 
@@ -191,34 +208,50 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			CKOut_Low;
 		}
 		keyborad_data=data;
-		printf("%d\r\n",keyborad_data);
+//		printf("%d\r\n",keyborad_data);
 		__HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_7);
 	}
 }
 
+//定时器中断函数
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	static int stepper_No_last,stepper_angle_last;
+	static int x_last = x0, y_last = y0;
   
 	/***** TIM1-定时器中断-50Hz *****/
 	if(htim->Instance == TIM1){
-		if(stepper_angle_last==stepper_usart_angle[1]&&(stepper_No_last==stepper_usart_angle[0])) return;
-		switch(stepper_usart_angle[0]){
-			case 1:
-				//stepper_to_angle(&motor1,stepper_usart_angle[1],270);
-			board_y_angle(stepper_usart_angle[1],270);
-				break;
-			case 2:
-				//stepper_to_angle(&motor2,stepper_usart_angle[1],270);
-			board_x_angle(stepper_usart_angle[1],270);
-				break;
-			case 3:
-				stepper_to_angle(&motor3,stepper_usart_angle[1],270);
-				break;
-			case 4:
-				stepper_to_angle(&motor4,stepper_usart_angle[1],270);
-				break;
-			default: break;
+		/***** PID控制 *****/
+		if(x_cur==x_last&&y_cur==y_last);
+		else{
+			if(x_cur!=x_last){
+				pid_dangle(&motor2,270);
+				x_last=x_cur;
+			}
+			if(y_cur!=y_last){
+				pid_dangle(&motor1,270);
+				y_last=y_cur;
+			}
+		}
+		
+		/***** 串口控制 *****/
+		if(stepper_angle_last==stepper_usart_angle[1]&&(stepper_No_last==stepper_usart_angle[0]));
+		else{
+			switch((int)stepper_usart_angle[0]){
+				case 1:
+					//stepper_to_angle(&motor1,stepper_usart_angle[1],270);
+				board_y_angle(stepper_usart_angle[1],270);
+				stepper_angle_last = stepper_usart_angle[1];
+				stepper_No_last = stepper_usart_angle[0];
+					break;
+				case 2:
+					//stepper_to_angle(&motor2,stepper_usart_angle[1],270);
+				board_x_angle(stepper_usart_angle[1],270);
+				stepper_angle_last = stepper_usart_angle[1];
+				stepper_No_last = stepper_usart_angle[0];
+					break;
+				default: break;
+			}
 		}
 	}
 }
@@ -299,73 +332,6 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
       }
     }
 		
-		//No3 电机
-    else if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_3)
-    {
-			
-      if(GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOB,motor3.Stp_pin))
-      {
-				if(motor3.pulsenum_left==0)HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_3);
-				else{
-					if(motor3.stepper_dir==CW){
-						motor3.pulsenum_left--;
-						motor3.step_record = (motor3.step_record+1)%SPR;
-					}
-				}
-			OC_Channel3_Pulse = (1000000*MICRO_STEP_ANGLE)/motor3.Anl_v;
-        __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,OC_Count + OC_Channel3_Pulse - OC_Channel3_Duty*OC_Channel3_Pulse/100);
-      }
-      else	//上升沿
-      {
-				//已经达到需要产生的脉冲数，停止产生脉冲
-				if(motor3.pulsenum_left==0)HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_3);
-				//未达到，计数减少，同时改变电机步数记录
-				else {
-					if(motor3.stepper_dir==CCW){
-						motor3.pulsenum_left--;
-						if(motor3.step_record==0) motor3.step_record = SPR-1;
-						else motor3.step_record--;
-					}
-				}
-				//设置波形参数
-				OC_Channel3_Pulse = (1000000*MICRO_STEP_ANGLE)/motor3.Anl_v;
-        __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_3,OC_Count + OC_Channel3_Duty*OC_Channel3_Pulse/100);
-      }
-    }
-		
-		//No4 电机
-		else if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4)
-    {
-			
-      if(GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOB,motor4.Stp_pin))
-      {
-				if(motor4.pulsenum_left==0)HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_4);
-				else{
-					if(motor4.stepper_dir==CW){
-						motor4.pulsenum_left--;
-						motor4.step_record = (motor4.step_record+1)%SPR;
-					}
-				}
-			OC_Channel4_Pulse = (1000000*MICRO_STEP_ANGLE)/motor4.Anl_v;
-        __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,OC_Count + OC_Channel4_Pulse - OC_Channel4_Duty*OC_Channel4_Pulse/100);
-      }
-      else	//上升沿
-      {
-				//已经达到需要产生的脉冲数，停止产生脉冲
-				if(motor4.pulsenum_left==0)HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_4);
-				//未达到，计数减少，同时改变电机步数记录
-				else {
-					if(motor4.stepper_dir==CCW){
-						motor4.pulsenum_left--;
-						if(motor4.step_record==0) motor4.step_record = SPR-1;
-						else motor4.step_record--;
-					}
-				}
-				//设置波形参数
-				OC_Channel4_Pulse = (1000000*MICRO_STEP_ANGLE)/motor4.Anl_v;
-        __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_4,OC_Count + OC_Channel4_Duty*OC_Channel4_Pulse/100);
-      }
-    }
 	}
 }
 

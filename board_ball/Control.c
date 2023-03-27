@@ -20,7 +20,7 @@ void board_y_dangle(float d_angle,int v)
 {
 	//dy=7.3258dx
 	int pulse_count = (d_angle*7.3258)/MICRO_STEP_ANGLE;
-	if(pulse_count+motor1.step_record>=(int)88.8/MICRO_STEP_ANGLE) pulse_count = (int)(88.8/MICRO_STEP_ANGLE)-motor1.step_record;
+	if(pulse_count+motor1.step_record>=(int)80/MICRO_STEP_ANGLE) pulse_count = (int)(80/MICRO_STEP_ANGLE)-motor1.step_record;
 	else if(pulse_count+motor1.step_record<=0) pulse_count = 0-motor1.step_record;
 	stepper_ctr(&motor1,pulse_count);
 }
@@ -28,8 +28,8 @@ void board_y_dangle(float d_angle,int v)
 //控制平板x轴方向倾斜到指定角度
 void board_x_angle(float target_ang,int v)
 {
-	//x轴近似方程：y=6.553x+0.7695
-	float stepper_target_ang = 6.553*target_ang+0.7695;
+	//x轴近似方程：y=6.9953x+0.7695
+	float stepper_target_ang = 6.9953*target_ang+0.7695;
 	stepper_to_angle(&motor2,stepper_target_ang,270);
 }
 
@@ -54,8 +54,8 @@ void pid_dangle(stepper *motor,int v)
 void board_x_dangle(float d_angle,int v)
 {
 	//dy=6.553dx
-	int pulse_count = (d_angle*6.553)/MICRO_STEP_ANGLE;
-	if(pulse_count+motor2.step_record>=90/MICRO_STEP_ANGLE) pulse_count = (int)(90/MICRO_STEP_ANGLE)-motor2.step_record;
+	int pulse_count = (d_angle*6.9953)/MICRO_STEP_ANGLE;
+	if(pulse_count+motor2.step_record>=85/MICRO_STEP_ANGLE) pulse_count = (int)(85/MICRO_STEP_ANGLE)-motor2.step_record;
 	else if(pulse_count+motor2.step_record<=0) pulse_count = 0-motor2.step_record;
 	stepper_ctr(&motor2,pulse_count);
 }

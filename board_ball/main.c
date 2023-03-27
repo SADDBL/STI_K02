@@ -133,8 +133,8 @@ int main(void)
 	OC_Channel2_Duty=50;
 	
 	//PID控制器结构体初始化
-	pid_init(&pid_controler1,kp1,ki1,kd1,7,-7);
-	pid_init(&pid_controler2,kp2,ki2,kd2,7,-7);
+	pid_init(&pid_controler1,kp1,ki1,kd1,6,-6);
+	pid_init(&pid_controler2,kp2,ki2,kd2,6,-6);
 	
 	//步进电机结构体初始化
 	stepper_init(&motor1,GPIO_PIN_6,GPIOA,GPIO_PIN_15,TIM_CHANNEL_1,&pid_controler1,1);
@@ -222,17 +222,28 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	/***** TIM1-定时器中断-50Hz *****/
 	if(htim->Instance == TIM1){
 		/***** PID控制 *****/
-		if(x_cur==x_last&&y_cur==y_last);
-		else{
-			if(x_cur!=x_last){
-				pid_dangle(&motor2,270);
-				x_last=x_cur;
-			}
-			if(y_cur!=y_last){
-				pid_dangle(&motor1,270);
-				y_last=y_cur;
-			}
-		}
+		pid_dangle(&motor2,270);
+		pid_dangle(&motor1,270);
+//		printf("out=%0.2f\t",motor1.pid_concroler->output);
+//		printf("err=%0.2f\t",motor1.pid_concroler->err);
+//		printf("cur=%0.2f\t",(motor1.step_record*MICRO_STEP_ANGLE-45));
+//		printf("x=%d,y=%d\r\n",x_cur,y_cur);
+//		if(x_cur==x_last&&y_cur==y_last);
+//		else{
+//			if(x_cur!=x_last){
+//			//	pid_dangle(&motor2,270);
+//				x_last=x_cur;
+//			}
+//			if(y_cur!=y_last){
+//				pid_dangle(&motor1,270);
+//				
+////				printf("out=%0.2f\t",motor1.pid_concroler->output);
+////				printf("err=%0.2f\t",motor1.pid_concroler->err);
+////				printf("cur=%0.2f\t",(motor1.step_record*MICRO_STEP_ANGLE-45));
+////				printf("x=%d,y=%d\r\n",x_cur,y_cur);
+//				y_last=y_cur;
+//			}
+//		}
 		
 		/***** 串口控制 *****/
 		if(stepper_angle_last==stepper_usart_angle[1]&&(stepper_No_last==stepper_usart_angle[0]));

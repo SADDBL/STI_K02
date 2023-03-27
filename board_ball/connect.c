@@ -29,15 +29,17 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 				x_cur = 0;
 				y_cur = 0;
 				for(i=0;i<3;i++){
-					x_cur+=index*(usart3_buf[i]-'0');
+					if(usart3_buf[i]==' ') x_cur+=0*(usart3_buf[i]-'0');
+					else if(usart3_buf[i]>'/'&&usart3_buf[i]<':') x_cur+=index*(usart3_buf[i]-'0');
 					index/=10;
 				}
 				index=100;
 				for(i=0;i<3;i++){
-					y_cur+=index*(usart3_buf[i+3]-'0');
+					if(usart3_buf[i+3]==' ') y_cur+=0*(usart3_buf[i+3]-'0');
+					else if(usart3_buf[i+3]>'/'&&usart3_buf[i+3]<':') y_cur+=index*(usart3_buf[i+3]-'0');
 					index/=10;
 				}
-				printf("x=%d,y=%d\r\n",x_cur,y_cur);
+				printf("%s\r\n",usart3_buf);
 			}
 		}
 		else{
@@ -79,7 +81,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 						index*=-1;
 						continue;
 					}
-					if(i==4){
+					if(usart2_buf[i]=='.'){
 						i++;
 						index/=10;
 						continue;
@@ -88,8 +90,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 					index/=10;
 				}
 				stepper_usart_angle[1] = angle;
-//				printf("%d\r\n",stepper_usart_angle[1]);
-//				printf("%d\r\n",stepper_usart_angle[0]);
+				printf("%f:",stepper_usart_angle[0]);
+				printf("%f\r\n",stepper_usart_angle[1]);
 			}
 		}
 		else{

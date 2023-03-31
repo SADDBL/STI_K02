@@ -34,8 +34,8 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-#define x0 300
-#define y0 300
+#define x0 340
+#define y0 340
 
 /* USER CODE END PTD */
 
@@ -79,11 +79,11 @@ int keyborad_data;
 int x_target,y_target;
 
 //小球当前位置(x,y)
-int x_cur,y_cur;
+int x_cur = x0,y_cur = y0;
 
 //PID控制器的参数，写成全局方便修改
-float kp1=0.1,ki1=0,kd1=0;
-float kp2=0.1,ki2=0,kd2=0;
+float kp1=0.1,ki1=0.0,kd1=0.01;
+float kp2=0.1,ki2=0.0,kd2=0.01;
 /* USER CODE END 0 */
 
 /**
@@ -131,10 +131,12 @@ int main(void)
 	oled_pid_para_dis(1);
 	OC_Channel1_Duty=50;
 	OC_Channel2_Duty=50;
+	x_target = x0;
+	y_target = y0;
 	
 	//PID控制器结构体初始化
-	pid_init(&pid_controler1,kp1,ki1,kd1,6,-6);
-	pid_init(&pid_controler2,kp2,ki2,kd2,6,-6);
+	pid_init(&pid_controler1,kp1,ki1,kd1,60,-60);
+	pid_init(&pid_controler2,kp2,ki2,kd2,60,-60);
 	
 	//步进电机结构体初始化
 	stepper_init(&motor1,GPIO_PIN_6,GPIOA,GPIO_PIN_15,TIM_CHANNEL_1,&pid_controler1,1);
@@ -222,42 +224,37 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	/***** TIM1-定时器中断-50Hz *****/
 	if(htim->Instance == TIM1){
 		/***** PID控制 *****/
-		pid_dangle(&motor2,270);
-		pid_dangle(&motor1,270);
+//		pid_dangle(&motor2,270);
+//		pid_dangle(&motor1,270);
 //		printf("out=%0.2f\t",motor1.pid_concroler->output);
 //		printf("err=%0.2f\t",motor1.pid_concroler->err);
 //		printf("cur=%0.2f\t",(motor1.step_record*MICRO_STEP_ANGLE-45));
 //		printf("x=%d,y=%d\r\n",x_cur,y_cur);
-//		if(x_cur==x_last&&y_cur==y_last);
-//		else{
-//			if(x_cur!=x_last){
-//			//	pid_dangle(&motor2,270);
-//				x_last=x_cur;
-//			}
-//			if(y_cur!=y_last){
-//				pid_dangle(&motor1,270);
-//				
-////				printf("out=%0.2f\t",motor1.pid_concroler->output);
-////				printf("err=%0.2f\t",motor1.pid_concroler->err);
-////				printf("cur=%0.2f\t",(motor1.step_record*MICRO_STEP_ANGLE-45));
-////				printf("x=%d,y=%d\r\n",x_cur,y_cur);
-//				y_last=y_cur;
-//			}
-//		}
+		if(x_cur==x_last&&y_cur==y_last);
+		else{
+			if(x_cur!=x_last){
+				pid_dangle(&motor2,270);
+				x_last=x_cur;
+			}
+			if(y_cur!=y_last){
+				pid_dangle(&motor1,270);
+				y_last=y_cur;
+			}
+		}
 		
 		/***** 串口控制 *****/
 		if(stepper_angle_last==stepper_usart_angle[1]&&(stepper_No_last==stepper_usart_angle[0]));
 		else{
 			switch((int)stepper_usart_angle[0]){
 				case 1:
-					//stepper_to_angle(&motor1,stepper_usart_angle[1],270);
-				board_y_angle(stepper_usart_angle[1],270);
+				stepper_to_angle(&motor1,stepper_usart_angle[1],270);
+				//board_y_angle(stepper_usart_angle[1],270);
 				stepper_angle_last = stepper_usart_angle[1];
 				stepper_No_last = stepper_usart_angle[0];
 					break;
 				case 2:
-					//stepper_to_angle(&motor2,stepper_usart_angle[1],270);
-				board_x_angle(stepper_usart_angle[1],270);
+				stepper_to_angle(&motor2,stepper_usart_angle[1],270);
+				//board_x_angle(stepper_usart_angle[1],270);
 				stepper_angle_last = stepper_usart_angle[1];
 				stepper_No_last = stepper_usart_angle[0];
 					break;
@@ -282,10 +279,11 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 			
       if(GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOB,motor1.Stp_pin))
       {
-				if(motor1.pulsenum_left==0)HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_1);
+				if(motor1.pulsenum_left[0]==0)HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_1);
+				//if(motor1.step_record==motor1.step_target) HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_1);
 				else{
 					if(motor1.stepper_dir==CW){
-						motor1.pulsenum_left--;
+						motor1.pulsenum_left[0]--;
 						motor1.step_record = (motor1.step_record+1)%SPR;
 					}
 				}
@@ -295,11 +293,12 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
       else	//上升沿
       {
 				//已经达到需要产生的脉冲数，停止产生脉冲
-				if(motor1.pulsenum_left==0)HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_1);
+				if(motor1.pulsenum_left[0]==0)HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_1);
+				//if(motor1.step_record==motor1.step_target) HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_1);
 				//未达到，计数减少，同时改变电机步数记录
 				else {
 					if(motor1.stepper_dir==CCW){
-						motor1.pulsenum_left--;
+						motor1.pulsenum_left[0]--;
 						if(motor1.step_record==0) motor1.step_record = SPR-1;
 						else motor1.step_record--;
 					}
@@ -312,13 +311,13 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 		//No2 电机
     else if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2)
     {
-			
       if(GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOB,motor2.Stp_pin))
       {
-				if(motor2.pulsenum_left==0)HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_2);
+				if(motor2.pulsenum_left[0]==0)HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_2);
+				//if(motor2.step_record==motor2.step_target) HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_2);
 				else{
 					if(motor2.stepper_dir==CW){
-						motor2.pulsenum_left--;
+						motor2.pulsenum_left[0]--;
 						motor2.step_record = (motor2.step_record+1)%SPR;
 					}
 				}
@@ -328,11 +327,12 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
       else	//上升沿
       {
 				//已经达到需要产生的脉冲数，停止产生脉冲
-				if(motor2.pulsenum_left==0)HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_2);
+				if(motor2.pulsenum_left[0]==0)HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_2);
+				//if(motor2.step_record==motor2.step_target) HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_2);
 				//未达到，计数减少，同时改变电机步数记录
 				else {
 					if(motor2.stepper_dir==CCW){
-						motor2.pulsenum_left--;
+						motor2.pulsenum_left[0]--;
 						if(motor2.step_record==0) motor2.step_record = SPR-1;
 						else motor2.step_record--;
 					}

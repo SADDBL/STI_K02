@@ -21,12 +21,16 @@
 #define Running 1	//正在转动
 #define Stop 0	//静止
 
+/* PID控制相关参数 */
+#define e_max1 200	//误差界限
+
 typedef float PIDOut_Type;	//PID的输出值的数据类型
 typedef float PIDIn_Type;	//PID的目标、误差的数据类型
 
 /* PID结构体 */
 typedef struct PIDStruct{
 	float kp,ki,kd;
+	float k1;	//增益放大系数
 	PIDIn_Type target_val,cur_val;
 	PIDIn_Type err_k2,err_k1,err;
 	PIDOut_Type output,output_max,output_min;
@@ -54,7 +58,7 @@ typedef struct stepmoter{
 	/*****状态变量*****/
 	int stepper_dir;	//标志电机转动方向，CW为正转（顺时针），CCW为逆时针
 	int stepper_running;	//步进电机的运行状态
-	int pulsenum_left;	//还需要转过的步数
+	int pulsenum_left[3];	//还需要转过的步数
 	
 	pid* pid_concroler;
 	

@@ -1,4 +1,5 @@
 #include "connect.h"
+#define angle_max 40
 
 uint8_t RecieveBuffer[1];
 uint8_t usart2_buf[9] = {0};
@@ -39,7 +40,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 					else if(usart3_buf[i+3]>'/'&&usart3_buf[i+3]<':') y_cur+=index*(usart3_buf[i+3]-'0');
 					index/=10;
 				}
-				printf("%s\r\n",usart3_buf);
+				//printf("%s\r\n",usart3_buf);
+				printf("x=%d,y=%d\r\n",x_cur,y_cur);
 			}
 		}
 		else{
@@ -89,8 +91,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 					angle += index*(usart2_buf[i]-'0');
 					index/=10;
 				}
+				if(angle>=angle_max) angle = angle_max;
+				else if(angle<=-angle_max) angle = -angle_max;
 				stepper_usart_angle[1] = angle;
-				printf("%f:",stepper_usart_angle[0]);
+				
+				printf("%0.f:\t",stepper_usart_angle[0]);
 				printf("%f\r\n",stepper_usart_angle[1]);
 			}
 		}

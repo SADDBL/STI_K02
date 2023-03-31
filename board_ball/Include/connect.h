@@ -17,5 +17,4 @@ extern uint8_t flag3;
 extern float stepper_usart_angle[2];
 
 
-
 #endif

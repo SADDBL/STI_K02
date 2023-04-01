@@ -76,14 +76,14 @@ int OC_Channel1_Duty,OC_Channel2_Duty;//输出比较Duty值，决定占空比，即Duty%
 int keyborad_data;
 
 //小球目标位置(x,y)
-int x_target,y_target;
+int x_target = x0,y_target = y0;
 
 //小球当前位置(x,y)
 int x_cur = x0,y_cur = y0;
 
 //PID控制器的参数，写成全局方便修改
-float kp1=0.1,ki1=0.0,kd1=0.01;
-float kp2=0.1,ki2=0.0,kd2=0.01;
+float kp1=5,ki1=0.0,kd1=2;
+float kp2=5,ki2=0.0,kd2=2;
 /* USER CODE END 0 */
 
 /**
@@ -131,12 +131,10 @@ int main(void)
 	oled_pid_para_dis(1);
 	OC_Channel1_Duty=50;
 	OC_Channel2_Duty=50;
-	x_target = x0;
-	y_target = y0;
 	
 	//PID控制器结构体初始化
-	pid_init(&pid_controler1,kp1,ki1,kd1,60,-60);
-	pid_init(&pid_controler2,kp2,ki2,kd2,60,-60);
+	pid_init(&pid_controler1,kp1,ki1,kd1);
+	pid_init(&pid_controler2,kp2,ki2,kd2);
 	
 	//步进电机结构体初始化
 	stepper_init(&motor1,GPIO_PIN_6,GPIOA,GPIO_PIN_15,TIM_CHANNEL_1,&pid_controler1,1);
@@ -224,42 +222,18 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	/***** TIM1-定时器中断-50Hz *****/
 	if(htim->Instance == TIM1){
 		/***** PID控制 *****/
-//		pid_dangle(&motor2,270);
-//		pid_dangle(&motor1,270);
-//		printf("out=%0.2f\t",motor1.pid_concroler->output);
-//		printf("err=%0.2f\t",motor1.pid_concroler->err);
-//		printf("cur=%0.2f\t",(motor1.step_record*MICRO_STEP_ANGLE-45));
-//		printf("x=%d,y=%d\r\n",x_cur,y_cur);
 		if(x_cur==x_last&&y_cur==y_last);
 		else{
 			if(x_cur!=x_last){
-				pid_dangle(&motor2,270);
+				pid_dangle(&motor2,350);
 				x_last=x_cur;
 			}
 			if(y_cur!=y_last){
-				pid_dangle(&motor1,270);
+				pid_dangle(&motor1,350);
 				y_last=y_cur;
 			}
-		}
-		
-		/***** 串口控制 *****/
-		if(stepper_angle_last==stepper_usart_angle[1]&&(stepper_No_last==stepper_usart_angle[0]));
-		else{
-			switch((int)stepper_usart_angle[0]){
-				case 1:
-				stepper_to_angle(&motor1,stepper_usart_angle[1],270);
-				//board_y_angle(stepper_usart_angle[1],270);
-				stepper_angle_last = stepper_usart_angle[1];
-				stepper_No_last = stepper_usart_angle[0];
-					break;
-				case 2:
-				stepper_to_angle(&motor2,stepper_usart_angle[1],270);
-				//board_x_angle(stepper_usart_angle[1],270);
-				stepper_angle_last = stepper_usart_angle[1];
-				stepper_No_last = stepper_usart_angle[0];
-					break;
-				default: break;
-			}
+			stepper_ctr(&motor1);
+			stepper_ctr(&motor2);
 		}
 	}
 }
@@ -279,33 +253,27 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 			
       if(GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOB,motor1.Stp_pin))
       {
-				if(motor1.pulsenum_left[0]==0)HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_1);
-				//if(motor1.step_record==motor1.step_target) HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_1);
+				if(motor1.target_step==motor1.step_record)HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_1);
 				else{
-					if(motor1.stepper_dir==CW){
-						motor1.pulsenum_left[0]--;
-						motor1.step_record = (motor1.step_record+1)%SPR;
+					if(motor1.target_step>motor1.step_record)//正转
+					{
+						motor1.step_record = motor1.step_record+1;
 					}
 				}
-			OC_Channel1_Pulse = (1000000*MICRO_STEP_ANGLE)/motor1.Anl_v;
-        __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_1,OC_Count + OC_Channel1_Pulse - OC_Channel1_Duty*OC_Channel1_Pulse/100);
+				OC_Channel1_Pulse = (1000000*MICRO_STEP_ANGLE)/motor1.Anl_v;//OC_Channel1_Pulse每个周期时钟个数，OC_Channel1_Duty%每个周期高电平时钟个数占比
+				__HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_1,OC_Count + OC_Channel1_Pulse - OC_Channel1_Duty*OC_Channel1_Pulse/100);//算式计算的是上升沿到来的时间节点
       }
-      else	//上升沿
+      else
       {
-				//已经达到需要产生的脉冲数，停止产生脉冲
-				if(motor1.pulsenum_left[0]==0)HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_1);
-				//if(motor1.step_record==motor1.step_target) HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_1);
-				//未达到，计数减少，同时改变电机步数记录
+				if(motor1.target_step==motor1.step_record)HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_1);
 				else {
-					if(motor1.stepper_dir==CCW){
-						motor1.pulsenum_left[0]--;
-						if(motor1.step_record==0) motor1.step_record = SPR-1;
-						else motor1.step_record--;
+					if(motor1.target_step<motor1.step_record)//反转
+					{
+						motor1.step_record--;
 					}
-				}
-				//设置波形参数
+				}	
 				OC_Channel1_Pulse = (1000000*MICRO_STEP_ANGLE)/motor1.Anl_v;
-        __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_1,OC_Count + OC_Channel1_Duty*OC_Channel1_Pulse/100);
+				__HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_1,OC_Count + OC_Channel1_Duty*OC_Channel1_Pulse/100);//算式计算的是下降沿到来的时间节点
       }
     }
 		//No2 电机
@@ -313,36 +281,29 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
     {
       if(GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOB,motor2.Stp_pin))
       {
-				if(motor2.pulsenum_left[0]==0)HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_2);
-				//if(motor2.step_record==motor2.step_target) HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_2);
+				if(motor2.target_step==motor2.step_record)HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_2);
 				else{
-					if(motor2.stepper_dir==CW){
-						motor2.pulsenum_left[0]--;
-						motor2.step_record = (motor2.step_record+1)%SPR;
+					if(motor2.target_step>motor2.step_record)//正转
+					{
+						motor2.step_record = motor2.step_record+1;
 					}
 				}
-			OC_Channel2_Pulse = (1000000*MICRO_STEP_ANGLE)/motor2.Anl_v;
-        __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_2,OC_Count + OC_Channel2_Pulse - OC_Channel2_Duty*OC_Channel2_Pulse/100);
+				OC_Channel1_Pulse = (1000000*MICRO_STEP_ANGLE)/motor2.Anl_v;//OC_Channel1_Pulse每个周期时钟个数，OC_Channel1_Duty%每个周期高电平时钟个数占比
+				__HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_2,OC_Count + OC_Channel1_Pulse - OC_Channel1_Duty*OC_Channel1_Pulse/100);//算式计算的是上升沿到来的时间节点
       }
-      else	//上升沿
+      else
       {
-				//已经达到需要产生的脉冲数，停止产生脉冲
-				if(motor2.pulsenum_left[0]==0)HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_2);
-				//if(motor2.step_record==motor2.step_target) HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_2);
-				//未达到，计数减少，同时改变电机步数记录
+				if(motor2.target_step==motor2.step_record)HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_2);
 				else {
-					if(motor2.stepper_dir==CCW){
-						motor2.pulsenum_left[0]--;
-						if(motor2.step_record==0) motor2.step_record = SPR-1;
-						else motor2.step_record--;
+					if(motor2.target_step<motor2.step_record)//反转
+					{
+						motor2.step_record--;
 					}
 				}
-				//设置波形参数
-				OC_Channel2_Pulse = (1000000*MICRO_STEP_ANGLE)/motor2.Anl_v;
-        __HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_2,OC_Count + OC_Channel2_Duty*OC_Channel2_Pulse/100);
+				OC_Channel1_Pulse = (1000000*MICRO_STEP_ANGLE)/motor2.Anl_v;
+				__HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_2,OC_Count + OC_Channel1_Duty*OC_Channel1_Pulse/100);//算式计算的是下降沿到来的时间节点
       }
     }
-		
 	}
 }
 

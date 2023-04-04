@@ -41,7 +41,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 					index/=10;
 				}
 				//printf("%s\r\n",usart3_buf);
-				printf("x=%d,y=%d\r\n",x_cur,y_cur);
+				//printf("x=%d,y=%d\r\n",x_cur,y_cur);
 			}
 		}
 		else{

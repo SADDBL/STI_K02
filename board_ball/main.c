@@ -69,6 +69,8 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+extern int target_step_y;
+
 int OC_Channel1_Pulse,OC_Channel2_Pulse;//输出比较Pulse值，决定输出频率，f=1MHz/Pulse
 int OC_Channel1_Duty,OC_Channel2_Duty;//输出比较Duty值，决定占空比，即Duty%
 
@@ -82,8 +84,8 @@ int x_target = x0,y_target = y0;
 int x_cur = x0,y_cur = y0;
 
 //PID控制器的参数，写成全局方便修改
-float kp1=1.5,ki1=0.0,kd1=20;
-float kp2=1.5,ki2=0.0,kd2=20;
+float kp1=1.5,ki1=0,kd1=0;
+float kp2=1.5,ki2=0,kd2=0;
 /* USER CODE END 0 */
 
 /**
@@ -149,6 +151,9 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+		printf("ycur=%0.f,yex=%d,out=%f\r\n",motor1.pid_concroler->cur_val,target_step_y,motor1.pid_concroler->output);
+		//printf("y_cur=%d,e1=%f,e2=%f,e3=%f\r\n",y_cur,motor1.pid_concroler->err,motor1.pid_concroler->err_k1,motor1.pid_concroler->err_k2);
+		HAL_Delay(7);
   }
   /* USER CODE END 3 */
 }
@@ -230,6 +235,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		if(y_last!=y_cur){
 			pid_dangle(&motor1,500);
 			y_last=y_cur;
+			//printf("e1=%f,e2=%f,e3=%f\r\n",motor1.pid_concroler->err,motor1.pid_concroler->err_k1,motor1.pid_concroler->err_k2);
 			stepper_ctr(&motor1);
 		}
 			//pid_dangle(&motor2,225);		

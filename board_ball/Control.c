@@ -61,8 +61,8 @@ void pos_pid_realize(pid* PID,PIDIn_Type actual_val)
 	PID->err = PID->target_val - PID->cur_val;
 	//¼ÆËãde(k)
 	PID->output = PID->kp*(PID->err - PID->err_k1) + PID->ki*PID->err + PID->kd*(PID->err + PID->err_k2 - 2*PID->err_k1);
-	PID->err_k1=PID->err;
 	PID->err_k2=PID->err_k1;
+	PID->err_k1=PID->err;
 }
 
 

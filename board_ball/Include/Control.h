@@ -22,16 +22,16 @@
 #define Stop 0	//静止
 
 /* PID控制相关参数 */
-typedef float PIDOut_Type;	//PID的输出值的数据类型
-typedef float PIDIn_Type;	//PID的目标、误差的数据类型
+typedef int PIDOut_Type;	//PID的输出值的数据类型
+typedef int PIDIn_Type;	//PID的目标、误差的数据类型
 
 /* PID结构体 */
 typedef struct PIDStruct{
 	float kp,ki,kd;
 	float k1;	//增益放大系数
-	PIDIn_Type target_val,cur_val;
-	PIDIn_Type err_k2,err_k1,err;
-	PIDOut_Type output;
+	volatile PIDIn_Type target_val,cur_val;
+	volatile PIDIn_Type err_k2,err_k1,err;
+	volatile PIDOut_Type output;
 }pid;
 
 /* 步进电机结构体 */

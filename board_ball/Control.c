@@ -26,7 +26,7 @@ void pid_dangle(stepper *motor,int v)
 			motor->target_step=-350;
 		motor->Anl_v = v;
 	}
-	else if(No==2){
+	if(No==2){
 		motor->pid_concroler->target_val = x_target;
 		pos_pid_realize(motor->pid_concroler,x_cur);
 		target_step_x += motor->pid_concroler->output;
@@ -94,14 +94,21 @@ void stepper_ctr(stepper* motor)
 	if(motor->target_step<motor->step_record) {	
 		motor->stepper_dir = CCW;
 		HAL_GPIO_WritePin(motor->Dir_Port,motor->Dir_pin,GPIO_PIN_SET);	//Dir_pin打高
+		HAL_TIM_OC_Start_IT(&htim4,motor->Channel);
+		__HAL_TIM_CLEAR_IT(&htim4,motor->Channel);
 	}
 	//正转
 	else if(motor->target_step>motor->step_record){
 		motor->stepper_dir = CW;
 		HAL_GPIO_WritePin(motor->Dir_Port,motor->Dir_pin,GPIO_PIN_RESET);	//Dir_pin拉低
+		HAL_TIM_OC_Start_IT(&htim4,motor->Channel);
+		__HAL_TIM_CLEAR_IT(&htim4,motor->Channel);
+	}
+	else if(motor->target_step==motor->step_record)
+	{
+		HAL_TIM_OC_Stop_IT(&htim4,motor->Channel);
 	}
 	//开启输出比较中断
-	HAL_TIM_OC_Start_IT(&htim4,motor->Channel);
-	__HAL_TIM_CLEAR_IT(&htim4,motor->Channel);
+	
 }
 

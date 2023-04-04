@@ -104,10 +104,6 @@ void stepper_ctr(stepper* motor)
 		HAL_TIM_OC_Start_IT(&htim4,motor->Channel);
 		__HAL_TIM_CLEAR_IT(&htim4,motor->Channel);
 	}
-	else if(motor->target_step==motor->step_record)
-	{
-		HAL_TIM_OC_Stop_IT(&htim4,motor->Channel);
-	}
 	//开启输出比较中断
 	
 }

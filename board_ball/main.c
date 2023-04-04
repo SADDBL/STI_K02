@@ -82,8 +82,8 @@ int x_target = x0,y_target = y0;
 int x_cur = x0,y_cur = y0;
 
 //PID控制器的参数，写成全局方便修改
-float kp1=5,ki1=0.0,kd1=0;
-float kp2=5,ki2=0.0,kd2=0;
+float kp1=1.5,ki1=0.0,kd1=20;
+float kp2=1.5,ki2=0.0,kd2=20;
 /* USER CODE END 0 */
 
 /**
@@ -222,13 +222,22 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	/***** TIM1-定时器中断-50Hz *****/
 	if(htim->Instance == TIM1){
 		/***** PID控制 *****/
-			pid_dangle(&motor2,225);		
-			pid_dangle(&motor1,225);
+		if(x_last!=x_cur){
+			pid_dangle(&motor2,500);
 			x_last=x_cur;
-			y_last=y_cur;
 			stepper_ctr(&motor2);
-  		stepper_ctr(&motor1);
-			
+		}
+		if(y_last!=y_cur){
+			pid_dangle(&motor1,500);
+			y_last=y_cur;
+			stepper_ctr(&motor1);
+		}
+			//pid_dangle(&motor2,225);		
+			//pid_dangle(&motor1,225);
+			//x_last=x_cur;
+			//y_last=y_cur;
+			//stepper_ctr(&motor2);
+  		//stepper_ctr(&motor1);
 	}
 }
 
@@ -241,6 +250,34 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
   if(htim->Instance == TIM4)
   {
 		OC_Count = __HAL_TIM_GET_COUNTER(htim);
+		
+		//No2 电机
+    if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2)
+    {
+			
+      if(GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOB,motor2.Stp_pin))
+      {
+				if(motor2.target_step==motor2.step_record)
+				{
+					HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_2);
+				}
+				OC_Channel2_Pulse = (1000000*MICRO_STEP_ANGLE)/motor2.Anl_v;//OC_Channel1_Pulse每个周期时钟个数，OC_Channel1_Duty%每个周期高电平时钟个数占比
+				__HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_2,OC_Count + OC_Channel2_Pulse - OC_Channel2_Duty*OC_Channel2_Pulse/100);//算式计算的是上升沿到来的时间节点
+      }
+      else
+      {
+				if(motor2.target_step>motor2.step_record)//正转
+				{
+					motor2.step_record++;
+				}
+				else if(motor2.target_step<motor2.step_record)//反转
+				{
+					motor2.step_record--;
+				}
+				OC_Channel2_Pulse = (1000000*MICRO_STEP_ANGLE)/motor2.Anl_v;
+				__HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_2,OC_Count + OC_Channel2_Duty*OC_Channel2_Pulse/100);//算式计算的是下降沿到来的时间节点
+      }
+    }
 		//No1 电机
     if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
     {
@@ -258,7 +295,7 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
       {
 				if(motor1.target_step>motor1.step_record)//正转
 				{
-					motor1.step_record = motor1.step_record+1;
+					motor1.step_record++;
 				}
 				else if(motor1.target_step<motor1.step_record)//反转
 				{
@@ -266,33 +303,6 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 				}
 				OC_Channel1_Pulse = (1000000*MICRO_STEP_ANGLE)/motor1.Anl_v;
 				__HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_1,OC_Count + OC_Channel1_Duty*OC_Channel1_Pulse/100);//算式计算的是下降沿到来的时间节点
-      }
-    }
-		//No2 电机
-    if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2)
-    {
-			
-      if(GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOB,motor2.Stp_pin))
-      {
-				if(motor2.target_step==motor2.step_record)
-				{
-					HAL_TIM_OC_Stop_IT(&htim4,TIM_CHANNEL_2);
-				}
-				OC_Channel1_Pulse = (1000000*MICRO_STEP_ANGLE)/motor2.Anl_v;//OC_Channel1_Pulse每个周期时钟个数，OC_Channel1_Duty%每个周期高电平时钟个数占比
-				__HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_2,OC_Count + OC_Channel1_Pulse - OC_Channel1_Duty*OC_Channel1_Pulse/100);//算式计算的是上升沿到来的时间节点
-      }
-      else
-      {
-				if(motor2.target_step>motor2.step_record)//正转
-				{
-					motor2.step_record = motor2.step_record+1;
-				}
-				else if(motor2.target_step<motor2.step_record)//反转
-				{
-					motor2.step_record--;
-				}
-				OC_Channel1_Pulse = (1000000*MICRO_STEP_ANGLE)/motor2.Anl_v;
-				__HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_2,OC_Count + OC_Channel1_Duty*OC_Channel1_Pulse/100);//算式计算的是下降沿到来的时间节点
       }
     }
 	}
